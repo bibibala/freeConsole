@@ -15,6 +15,7 @@
   let originalConsole = {};
   let isInitializing = false; // 防止重复初始化
   let hasInitialized = false; // 标记是否已经初始化
+  let isPanelClosed = false; // 标记面板是否被用户关闭
 
   // console.log('🚀');
 
@@ -78,6 +79,16 @@
         } else {
           resolve(null);
         }
+      });
+    });
+  }
+
+  // 恢复面板关闭状态
+  function restorePanelClosedState() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get('panelClosed', (result) => {
+        isPanelClosed = result.panelClosed || false;
+        resolve(isPanelClosed);
       });
     });
   }
@@ -283,6 +294,9 @@
         // 隐藏面板
         if (panel) {
           panel.style.display = 'none';
+          isPanelClosed = true;
+          // 保存关闭状态到存储
+          chrome.storage.local.set({panelClosed: true});
           // console.log('面板已关闭');
           // console.log('按 Ctrl+Shift+H 重新打开面板');
 
@@ -335,6 +349,9 @@
       if (e.ctrlKey && e.shiftKey && e.key === 'H') {
         if (panel && panel.style.display === 'none') {
           panel.style.display = 'block';
+          isPanelClosed = false;
+          // 清除存储中的关闭状态
+          chrome.storage.local.set({panelClosed: false});
           // console.log('面板已重新打开');
 
           // 移除重新打开提示（如果存在）
@@ -721,6 +738,9 @@
 
     isInitializing = true;
 
+    // 恢复面板关闭状态
+    await restorePanelClosedState();
+
     try {
       // 先向 background script 注册当前标签页
       const response = await chrome.runtime.sendMessage({type: 'PANEL_READY'});
@@ -735,10 +755,18 @@
       } else {
         // 是活动标签页，正常显示面板
         await createPanel();
+        // 如果面板被用户关闭过，则保持隐藏状态
+        if (isPanelClosed && panel) {
+          panel.style.display = 'none';
+        }
       }
     } catch (error) {
       // console.log('无法连接到 background script，使用默认行为');
       await createPanel();
+      // 如果面板被用户关闭过，则保持隐藏状态
+      if (isPanelClosed && panel) {
+        panel.style.display = 'none';
+      }
     }
 
     setupErrorHandling();
@@ -759,7 +787,8 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case 'SHOW_PANEL':
-        if (panel) {
+        // 只有当面板没有被用户主动关闭时才显示
+        if (panel && !isPanelClosed) {
           panel.style.display = 'block';
           // console.log('面板已显示');
         }
