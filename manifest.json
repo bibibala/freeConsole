@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Free Console",
+  "appid": "",
+  "versionName": "",
+  "versionCode": "",
+  "version": "1.1",
+  "description": "在页面上悬浮显示控制台日志",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icons/f16.png",
+      "48": "icons/f48.png",
+      "128": "icons/f128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page-injector.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icons/f16.png",
+    "48": "icons/f48.png",
+    "128": "icons/f128.png"
+  }
+}
