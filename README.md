@@ -1,28 +1,18 @@
+---
 # 🚀 Free Console
 
-## 一个浏览器扩展
+## 一个关于控制台的浏览器扩展程序
 
-<div align="center">
+- 目前下载方式只有在发行版中找到最新版，自行手动安装。暂未上架chrom的想法
 
-  <!-- Logo -->
-  <img src="icons/logo.png" alt="Free Console Logo" width="120" height="120">
+![Free Console Screenshot](screenshot/image.png)
 
-  <!-- Project Description -->
-  <p><strong>一键打开浏览器开发者控制台</strong></p>
+### 核心功能
 
-  <!-- Screenshot -->
-  <img src="screenshot/image.png" alt="Free Console Screenshot" width="700" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+- 一键快速打开浏览器开发者控制台
+- 简洁无冗余的界面设计
 
-</div>
+### 下载与安装
 
+- 目前可在项目发行版中找到最新版本，手动安装到浏览器中。暂未计划上架Chrome应用商店。
 ---
-
-## 📖 简介
-
-快速打开浏览器开发者控制台的便捷工具，省去繁琐步骤，一键直达。
-
-## 🎯 使用方法
-
-1. 安装扩展
-2. 点击扩展图标
-3. 立即打开控制台

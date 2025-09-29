@@ -1,0 +1,16 @@
+# 自动检测文本文件并强制使用 LF
+* text=auto eol=lf
+
+# 明确指定某些文件类型
+*.js text eol=lf
+*.vue text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+
+# 二进制文件不处理
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

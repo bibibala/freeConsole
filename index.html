@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+    </head>
+    <body>
+        <button onclick="testSingleLog()">测试单次日志</button>
+        <button onclick="testMultipleLogs()">测试多次日志</button>
+        <button onclick="testErrorLog()">测试错误日志</button>
+        <button onclick="testDuplicateLogs()">测试重复日志</button>
+
+        <script>
+            function testSingleLog() {
+                console.log("这是一条测试日志");
+            }
+
+            function testMultipleLogs() {
+                console.log("日志1");
+                console.log("日志2");
+                console.log("日志3");
+            }
+
+            function testErrorLog() {
+                console.error("这是一条错误日志");
+                console.warn("这是一条警告日志");
+            }
+
+            function testDuplicateLogs() {
+                // 故意快速点击产生重复日志
+                for (let i = 0; i < 5; i++) {
+                    console.log("重复测试日志");
+                }
+            }
+
+            // 页面加载时的日志
+            console.log("页面加载完成");
+            console.info("Hover Console 扩展已加载");
+        </script>
+    </body>
+</html>

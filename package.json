@@ -1,0 +1,35 @@
+{
+    "name": "free-console",
+    "version": "1.1.0",
+    "private": false,
+    "author": {
+        "email": "1140918095@qq.com",
+        "name": "bibibala"
+    },
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "postinstall": "git add --renormalize . || true",
+        "prepare": "simple-git-hooks",
+        "format": "prettier --write \"**/*.{js,json}\" --ignore-path .gitignore"
+    },
+    "devDependencies": {
+        "lint-staged": "^16.2.3",
+        "prettier": "^3.6.2",
+        "simple-git-hooks": "^2.13.1",
+        "vite": "^7.1.7"
+    },
+    "simple-git-hooks": {
+        "pre-commit": "pnpm lint-staged",
+        "pre-push": "git pull --rebase",
+        "post-merge": "pnpm prepare"
+    },
+    "lint-staged": {
+        "*.{js}": [
+            "prettier --write --end-of-line lf"
+        ],
+        "*.{json,scss,html,md}": [
+            "prettier --write --end-of-line lf"
+        ]
+    }
+}
