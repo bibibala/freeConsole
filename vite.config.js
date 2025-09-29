@@ -10,7 +10,6 @@ export default defineConfig({
                 background: resolve(__dirname, "src/background.js"),
                 content: resolve(__dirname, "src/content.js"),
                 "page-injector": resolve(__dirname, "src/page-injector.js"),
-                test: resolve(__dirname, "index.html"),
             },
 
             output: {

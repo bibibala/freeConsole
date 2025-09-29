@@ -859,7 +859,7 @@
                 if (panel) {
                     panel.style.display = "block";
                     isPanelClosed = false; // 重置关闭状态
-                    savePanelClosedState(); // 保存状态
+                    chrome.storage.local.set({ panelClosed: isPanelClosed }); // 保存状态
                     // console.log('面板已显示');
                 }
                 break;
@@ -868,7 +868,7 @@
                 if (panel) {
                     panel.style.display = "none";
                     isPanelClosed = true; // 设置为关闭状态
-                    savePanelClosedState(); // 保存状态
+                    chrome.storage.local.set({ panelClosed: isPanelClosed }); // 保存状态
                     // console.log('面板已隐藏');
                 }
                 break;

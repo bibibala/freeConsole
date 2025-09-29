@@ -1,17 +1,12 @@
 {
     "manifest_version": 3,
     "name": "Free Console",
-    "appid": "",
-    "versionName": "",
-    "versionCode": "",
     "version": "1.1",
     "description": "在页面上悬浮显示控制台日志",
     "permissions": ["storage", "activeTab", "tabs"],
     "action": {
         "default_icon": {
             "16": "icons/f16.png",
-            "24": "icons/f24.png",
-            "32": "icons/f32.png",
             "48": "icons/f48.png",
             "128": "icons/f128.png"
         },
@@ -36,8 +31,6 @@
     ],
     "icons": {
         "16": "icons/f16.png",
-        "24": "icons/f24.png",
-        "32": "icons/f32.png",
         "48": "icons/f48.png",
         "128": "icons/f128.png"
     }
