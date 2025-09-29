@@ -77,23 +77,33 @@
     // 恢复面板位置
     function restorePanelPosition() {
         return new Promise((resolve) => {
-            chrome.storage.local.get("panelPosition", (result) => {
-                if (result.panelPosition) {
-                    resolve(result.panelPosition);
-                } else {
-                    resolve(null);
-                }
-            });
+            safeChromeApiCall(() => {
+                chrome.storage.local.get("panelPosition", (result) => {
+                    if (result.panelPosition) {
+                        resolve(result.panelPosition);
+                    } else {
+                        resolve(null);
+                    }
+                });
+            }, resolve(null));
         });
     }
 
     // 恢复面板关闭状态
     function restorePanelClosedState() {
         return new Promise((resolve) => {
-            chrome.storage.local.get("panelClosed", (result) => {
-                isPanelClosed = result.panelClosed || false;
-                resolve(isPanelClosed);
-            });
+            safeChromeApiCall(
+                () => {
+                    chrome.storage.local.get("panelClosed", (result) => {
+                        isPanelClosed = result.panelClosed || false;
+                        resolve(isPanelClosed);
+                    });
+                },
+                () => {
+                    isPanelClosed = false;
+                    resolve(false);
+                },
+            );
         });
     }
 
@@ -293,7 +303,9 @@
                 logs = [];
                 filterLogs();
                 renderLogs();
-                chrome.storage.local.set({ logs: [] });
+                safeChromeApiCall(() => {
+                    chrome.storage.local.set({ logs: [] });
+                });
             });
         }
 
@@ -304,7 +316,9 @@
                     panel.style.display = "none";
                     isPanelClosed = true;
                     // 保存关闭状态到存储
-                    chrome.storage.local.set({ panelClosed: true });
+                    safeChromeApiCall(() => {
+                        chrome.storage.local.set({ panelClosed: true });
+                    });
                     // console.log('面板已关闭');
                     // console.log('按 Ctrl+Shift+H 重新打开面板');
 
@@ -359,7 +373,9 @@
                     panel.style.display = "block";
                     isPanelClosed = false;
                     // 清除存储中的关闭状态
-                    chrome.storage.local.set({ panelClosed: false });
+                    safeChromeApiCall(() => {
+                        chrome.storage.local.set({ panelClosed: false });
+                    });
                     // console.log('面板已重新打开');
 
                     // 移除重新打开提示（如果存在）
@@ -472,7 +488,9 @@
                     left: finalLeft,
                     top: finalTop,
                 };
-                chrome.storage.local.set({ panelPosition: position });
+                safeChromeApiCall(() => {
+                    chrome.storage.local.set({ panelPosition: position });
+                });
             }
 
             // 更新拖拽位置的函数（优化版）
@@ -561,7 +579,9 @@
                     left: newLeft,
                     top: newTop,
                 };
-                chrome.storage.local.set({ panelPosition: position });
+                safeChromeApiCall(() => {
+                    chrome.storage.local.set({ panelPosition: position });
+                });
             }
 
             // 防止重复添加事件监听器
@@ -602,6 +622,27 @@
         }
     }
 
+    // 安全的Chrome API调用包装器
+    function safeChromeApiCall(apiFunction, fallbackValue = null) {
+        try {
+            if (
+                typeof chrome === "undefined" ||
+                !chrome.runtime ||
+                !chrome.runtime.id
+            ) {
+                return fallbackValue;
+            }
+            return apiFunction();
+        } catch (error) {
+            if (error.message.includes("Extension context invalidated")) {
+                console.warn("扩展上下文已失效，无法执行Chrome API调用");
+                return fallbackValue;
+            }
+            console.warn("Chrome API调用异常:", error.message);
+            return fallbackValue;
+        }
+    }
+
     // 添加日志（优化性能，减少延迟）
     function addLog(message, level = "log") {
         const timestamp = new Date().toLocaleTimeString();
@@ -638,8 +679,11 @@
 
         logs.push(logEntry);
 
-        // 限制日志数量
-        if (logs.length > 500) logs.shift();
+        // 严格的日志数量限制：内存中最多1000条，防止内存溢出
+        const MAX_MEMORY_LOGS = 1000;
+        if (logs.length > MAX_MEMORY_LOGS) {
+            logs.splice(0, logs.length - MAX_MEMORY_LOGS);
+        }
 
         // 立即更新显示，使用防抖减少渲染频率
         if (renderTimeout) {
@@ -652,13 +696,46 @@
             renderTimeout = null;
         }, 16); // 约60fps的刷新率
 
-        // 异步保存到存储，使用防抖
+        // 异步保存到存储，使用防抖和错误处理
         if (saveTimeout) {
             clearTimeout(saveTimeout);
         }
 
         saveTimeout = setTimeout(() => {
-            chrome.storage.local.set({ logs: logs.slice(-200) });
+            safeChromeApiCall(() => {
+                try {
+                    // 存储限制：最多保存150条日志，防止浏览器存储空间溢出
+                    const logsToSave = logs.slice(-150);
+                    const storageData = { logs: logsToSave };
+
+                    // 检查存储空间使用情况
+                    chrome.storage.local.getBytesInUse(null, (bytesInUse) => {
+                        const MAX_STORAGE_BYTES = 8000000; // 约8MB限制
+                        if (bytesInUse > MAX_STORAGE_BYTES) {
+                            // 如果存储空间快满了，清理旧的日志
+                            chrome.storage.local.clear(() => {
+                                chrome.storage.local.set(storageData);
+                            });
+                        } else {
+                            chrome.storage.local.set(storageData, () => {
+                                if (chrome.runtime.lastError) {
+                                    console.warn(
+                                        "日志存储失败:",
+                                        chrome.runtime.lastError.message,
+                                    );
+                                    // 存储失败时，尝试保存更少的日志
+                                    const reducedLogs = {
+                                        logs: logsToSave.slice(-50),
+                                    };
+                                    chrome.storage.local.set(reducedLogs);
+                                }
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.warn("日志存储异常:", error.message);
+                }
+            });
             saveTimeout = null;
         }, 100); // 100ms防抖
     }
@@ -788,12 +865,14 @@
 
     // 渲染已有日志
     function restoreLogs() {
-        chrome.storage.local.get("logs", (result) => {
-            if (result.logs && Array.isArray(result.logs)) {
-                logs = result.logs;
-                filterLogs();
-                renderLogs();
-            }
+        safeChromeApiCall(() => {
+            chrome.storage.local.get("logs", (result) => {
+                if (result.logs && Array.isArray(result.logs)) {
+                    logs = result.logs;
+                    filterLogs();
+                    renderLogs();
+                }
+            });
         });
     }
 
@@ -810,11 +889,26 @@
         // 恢复面板关闭状态
         await restorePanelClosedState();
 
+        // 如果面板被用户关闭过，则不再自动显示
+        if (isPanelClosed) {
+            // console.log('面板已被用户关闭，跳过面板创建');
+            setupErrorHandling();
+            setupDOMObserver();
+            restoreLogs();
+            injectPageScript();
+            hasInitialized = true;
+            isInitializing = false;
+            return;
+        }
+
         try {
             // 先向 background script 注册当前标签页
-            const response = await chrome.runtime.sendMessage({
-                type: "PANEL_READY",
-            });
+            const response = await safeChromeApiCall(() => {
+                return chrome.runtime.sendMessage({
+                    type: "PANEL_READY",
+                });
+            }, null);
+
             if (response && !response.showPanel) {
                 // 如果不是活动标签页，先不显示面板，但继续初始化其他功能
                 // console.log('当前不是活动标签页，面板将保持隐藏');
@@ -826,18 +920,10 @@
             } else {
                 // 是活动标签页，正常显示面板
                 await createPanel();
-                // 如果面板被用户关闭过，则保持隐藏状态
-                if (isPanelClosed && panel) {
-                    panel.style.display = "none";
-                }
             }
         } catch (error) {
             // console.log('无法连接到 background script，使用默认行为');
             await createPanel();
-            // 如果面板被用户关闭过，则保持隐藏状态
-            if (isPanelClosed && panel) {
-                panel.style.display = "none";
-            }
         }
 
         setupErrorHandling();
@@ -854,12 +940,22 @@
 
     // 监听来自 background script 的消息
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // 检查扩展上下文是否有效
+        if (!chrome.runtime?.id) {
+            console.warn("扩展上下文已失效，无法处理消息");
+            return false;
+        }
+
         switch (message.type) {
             case "SHOW_PANEL":
                 if (panel) {
                     panel.style.display = "block";
                     isPanelClosed = false; // 重置关闭状态
-                    chrome.storage.local.set({ panelClosed: isPanelClosed }); // 保存状态
+                    safeChromeApiCall(() => {
+                        chrome.storage.local.set({
+                            panelClosed: isPanelClosed,
+                        });
+                    }); // 保存状态
                     // console.log('面板已显示');
                 }
                 break;
@@ -868,7 +964,11 @@
                 if (panel) {
                     panel.style.display = "none";
                     isPanelClosed = true; // 设置为关闭状态
-                    chrome.storage.local.set({ panelClosed: isPanelClosed }); // 保存状态
+                    safeChromeApiCall(() => {
+                        chrome.storage.local.set({
+                            panelClosed: isPanelClosed,
+                        });
+                    }); // 保存状态
                     // console.log('面板已隐藏');
                 }
                 break;
