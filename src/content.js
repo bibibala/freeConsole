@@ -47,7 +47,12 @@
                 levelDebug: "#9ca3af",
                 levelSystem: "#34d399",
                 shadow: "0 10px 40px rgba(0, 0, 0, 0.4)",
-                scrollbar: "rgba(255, 255, 255, 0.2)",
+                // 更醒目的滚动条颜色（深色主题：蓝色系）
+                scrollbar: "#60a5fa99",
+                scrollbarHover: "#60a5facc",
+                scrollbarActive: "#60a5faff",
+                scrollbarTrack: "rgba(255, 255, 255, 0.08)",
+                scrollbarCorner: "rgba(38, 38, 42, 0.9)",
             },
             light: {
                 bg: "rgba(255, 255, 255, 0.95)",
@@ -67,7 +72,12 @@
                 levelDebug: "#6b7280",
                 levelSystem: "#059669",
                 shadow: "0 10px 40px rgba(0, 0, 0, 0.12)",
-                scrollbar: "rgba(0, 0, 0, 0.15)",
+                // 更醒目的滚动条颜色（浅色主题：深蓝色系）
+                scrollbar: "#2563eb80",
+                scrollbarHover: "#2563ebcc",
+                scrollbarActive: "#2563ebff",
+                scrollbarTrack: "rgba(0, 0, 0, 0.08)",
+                scrollbarCorner: "rgba(249, 250, 251, 0.95)",
             },
         };
 
@@ -268,17 +278,31 @@
         const scrollbarStyle = document.createElement("style");
         scrollbarStyle.textContent = `
             #hc-logs::-webkit-scrollbar {
-                width: 6px;
+                width: 8px;
             }
             #hc-logs::-webkit-scrollbar-track {
-                background: transparent;
+                background: ${theme.scrollbarTrack};
+                border-radius: 4px;
             }
             #hc-logs::-webkit-scrollbar-thumb {
                 background: ${theme.scrollbar};
-                border-radius: 3px;
+                border-radius: 6px;
+                border: 2px solid transparent;
+                background-clip: content-box;
+                box-shadow: inset 0 0 0 1px ${theme.border};
             }
             #hc-logs::-webkit-scrollbar-thumb:hover {
-                background: ${theme.border};
+                background: ${theme.scrollbarHover};
+            }
+            #hc-logs::-webkit-scrollbar-thumb:active {
+                background: ${theme.scrollbarActive};
+            }
+            #hc-logs::-webkit-scrollbar-corner {
+                background: ${theme.scrollbarCorner};
+            }
+            /* 预留底部内边距，避免被圆角遮挡 */
+            #hc-logs {
+                padding-bottom: 14px;
             }
         `;
         document.head.appendChild(scrollbarStyle);
@@ -889,9 +913,13 @@
         // 恢复面板关闭状态
         await restorePanelClosedState();
 
-        // 如果面板被用户关闭过，则不再自动显示
+        // 如果面板被用户关闭过，仍然创建面板但保持隐藏状态
         if (isPanelClosed) {
-            // console.log('面板已被用户关闭，跳过面板创建');
+            // console.log('面板已被用户关闭，创建隐藏状态的面板');
+            await createPanel();
+            if (panel) {
+                panel.style.display = "none";
+            }
             setupErrorHandling();
             setupDOMObserver();
             restoreLogs();
@@ -948,16 +976,22 @@
 
         switch (message.type) {
             case "SHOW_PANEL":
-                if (panel) {
-                    panel.style.display = "block";
-                    isPanelClosed = false; // 重置关闭状态
-                    safeChromeApiCall(() => {
-                        chrome.storage.local.set({
-                            panelClosed: isPanelClosed,
-                        });
-                    }); // 保存状态
-                    // console.log('面板已显示');
-                }
+                (async () => {
+                    if (!panel) {
+                        // 如果面板不存在，先创建它
+                        await createPanel();
+                    }
+                    if (panel) {
+                        panel.style.display = "block";
+                        isPanelClosed = false; // 重置关闭状态
+                        safeChromeApiCall(() => {
+                            chrome.storage.local.set({
+                                panelClosed: isPanelClosed,
+                            });
+                        }); // 保存状态
+                        // console.log('面板已显示');
+                    }
+                })();
                 break;
 
             case "HIDE_PANEL":
@@ -972,6 +1006,32 @@
                     // console.log('面板已隐藏');
                 }
                 break;
+
+            case "TOGGLE_PANEL":
+                (async () => {
+                    if (!panel) {
+                        await createPanel();
+                    }
+                    if (!panel) {
+                        sendResponse?.({ success: false });
+                        return;
+                    }
+                    const isHidden = panel.style.display === "none";
+                    if (isHidden) {
+                        panel.style.display = "block";
+                        isPanelClosed = false;
+                    } else {
+                        panel.style.display = "none";
+                        isPanelClosed = true;
+                    }
+                    safeChromeApiCall(() => {
+                        chrome.storage.local.set({
+                            panelClosed: isPanelClosed,
+                        });
+                    });
+                    sendResponse?.({ success: true, visible: !isHidden });
+                })();
+                return true;
 
             default:
                 break;

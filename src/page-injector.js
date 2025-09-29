@@ -15,12 +15,16 @@
 
     // 保存原始 console 方法（只保存一次）
     if (!window.__originalConsole) {
+        const safeBind = (method) =>
+            typeof method === "function"
+                ? method.bind(console)
+                : function () {};
         window.__originalConsole = {
-            log: console.log.bind(console),
-            error: console.error.bind(console),
-            warn: console.warn.bind(console),
-            info: console.info.bind(console),
-            debug: console.debug.bind(console),
+            log: safeBind(console.log),
+            error: safeBind(console.error),
+            warn: safeBind(console.warn),
+            info: safeBind(console.info),
+            debug: safeBind(console.debug),
         };
     }
 

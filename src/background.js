@@ -60,57 +60,18 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // 处理扩展图标点击事件
 chrome.action.onClicked.addListener(async (tab) => {
     const tabId = tab.id;
-
     if (!tabId) return;
-
     try {
-        // 获取当前标签页的面板状态
-        const currentState = panelStates.get(tabId);
-        const isVisible = currentState?.visible;
-
-        if (isVisible) {
-            // 如果面板可见，则隐藏它
-            await chrome.tabs.sendMessage(tabId, {
-                type: "HIDE_PANEL",
-            });
-
-            // 更新状态
-            panelStates.set(tabId, {
-                ...currentState,
-                visible: false,
-            });
-
-            console.log(`隐藏标签页 ${tabId} 的面板`);
-        } else {
-            // 如果面板不可见，则显示它
-            await chrome.tabs.sendMessage(tabId, {
-                type: "SHOW_PANEL",
-            });
-
-            // 更新状态
-            panelStates.set(tabId, {
-                ...currentState,
-                visible: true,
-            });
-
-            console.log(`显示标签页 ${tabId} 的面板`);
-        }
+        const resp = await chrome.tabs.sendMessage(tabId, {
+            type: "TOGGLE_PANEL",
+        });
+        console.log(`切换标签页 ${tabId} 面板，可见: ${resp?.visible}`);
     } catch (error) {
-        // 如果发送失败，说明该标签页还没有 content script
-        console.log(`标签页 ${tabId} 还没有加载 content script，尝试显示面板`);
-
+        // 如果 content script 尚未注入，先 ping 一次 SHOW_PANEL，再次切换
         try {
-            // 尝试显示面板
-            await chrome.tabs.sendMessage(tabId, {
-                type: "SHOW_PANEL",
-            });
-
-            // 设置状态
-            panelStates.set(tabId, {
-                ready: true,
-                visible: true,
-            });
-        } catch (retryError) {
+            await chrome.tabs.sendMessage(tabId, { type: "SHOW_PANEL" });
+            await chrome.tabs.sendMessage(tabId, { type: "TOGGLE_PANEL" });
+        } catch (e) {
             console.log(`标签页 ${tabId} 无法接收消息`);
         }
     }
