@@ -30,15 +30,8 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
         }
     }
 
-    // 显示当前标签页的面板
-    try {
-        await chrome.tabs.sendMessage(activeTabId, {
-            type: "SHOW_PANEL",
-        });
-        console.log(`显示标签页 ${activeTabId} 的面板`);
-    } catch (error) {
-        console.log(`标签页 ${activeTabId} 还没有加载 content script`);
-    }
+    // 不再在切换到新标签页时自动显示面板，避免用户已关闭时被强行打开
+    // 如需显示请用户点击扩展图标或使用快捷键
 });
 
 // 监听标签页关闭
@@ -89,19 +82,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             return true;
 
         case "PANEL_READY":
-            // content script 已准备好
+            // content script 已准备好，仅记录状态，不自动要求显示面板
             if (tabId) {
                 panelStates.set(tabId, {
                     ready: true,
-                    visible: tabId === activeTabId,
+                    // 不依据是否为活动标签页来决定显示
+                    visible: undefined,
                 });
-
-                // 如果是当前活动标签页，显示面板
-                if (tabId === activeTabId) {
-                    sendResponse({ showPanel: true });
-                } else {
-                    sendResponse({ showPanel: false });
-                }
+                sendResponse({ showPanel: false });
             }
             return true;
 

@@ -913,45 +913,21 @@
         // 恢复面板关闭状态
         await restorePanelClosedState();
 
-        // 如果面板被用户关闭过，仍然创建面板但保持隐藏状态
-        if (isPanelClosed) {
-            // console.log('面板已被用户关闭，创建隐藏状态的面板');
-            await createPanel();
-            if (panel) {
-                panel.style.display = "none";
-            }
-            setupErrorHandling();
-            setupDOMObserver();
-            restoreLogs();
-            injectPageScript();
-            hasInitialized = true;
-            isInitializing = false;
-            return;
+        // 如果面板被用户关闭过，仍然创建面板但保持隐藏状态；否则创建并显示
+        await createPanel();
+        if (panel) {
+            panel.style.display = isPanelClosed ? "none" : "block";
         }
 
         try {
-            // 先向 background script 注册当前标签页
-            const response = await safeChromeApiCall(() => {
+            // 向 background script 注册（不影响显示逻辑）
+            await safeChromeApiCall(() => {
                 return chrome.runtime.sendMessage({
                     type: "PANEL_READY",
                 });
             }, null);
-
-            if (response && !response.showPanel) {
-                // 如果不是活动标签页，先不显示面板，但继续初始化其他功能
-                // console.log('当前不是活动标签页，面板将保持隐藏');
-                // 仍然创建面板但保持隐藏状态
-                await createPanel();
-                if (panel) {
-                    panel.style.display = "none";
-                }
-            } else {
-                // 是活动标签页，正常显示面板
-                await createPanel();
-            }
         } catch (error) {
             // console.log('无法连接到 background script，使用默认行为');
-            await createPanel();
         }
 
         setupErrorHandling();
